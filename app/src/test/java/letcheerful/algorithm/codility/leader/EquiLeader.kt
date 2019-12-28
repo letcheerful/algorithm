@@ -2,47 +2,84 @@ package letcheerful.algorithm.codility.leader
 
 import org.junit.Assert
 import org.junit.Test
-import kotlin.math.max
 
 class EquiLeader {
 
     fun solution(A: IntArray): Int {
-        val leftMap = HashMap<Int, Int>()
-        val rightMap = A.fold(HashMap<Int, Int>()) { numberMap, number ->
-            numberMap.apply { compute(number) { _, oldValue -> (oldValue ?: 0) + 1 } }
-        }
-        var count = 0
 
-        for (index in A.indices) {
-            val number = A[index]
+        class NumberGroup {
 
-            leftMap.apply { compute(number) { _, oldValue -> (oldValue ?: 0) + 1 } }
-            rightMap.apply {
-                get(number)?.also { count ->
-                    if(count == 1) remove(number)
-                    else put(number, count - 1)
+            private val numberMap = HashMap<Int, Int>()
+            var totalCount = 0
+                private set
+
+            fun add(number: Int) {
+                numberMap.compute(number) { _, oldCount -> (oldCount ?: 0) + 1 }
+            }
+
+            fun remove(number: Int) {
+                numberMap.compute(number) { number, oldCount ->
+                    when (oldCount) {
+                        null -> {
+                            null
+                        }
+                        0 -> {
+                            numberMap.remove(number)
+                            null
+                        }
+                        1 -> {
+                            totalCount--
+                            numberMap.remove(number)
+                            null
+                        }
+                        else -> {
+                            totalCount--
+                            oldCount - 1
+                        }
+                    }
                 }
             }
 
-            val leftLeader = leftMap.maxBy { it.value }?.let {
-                if(it.value > (index + 1) / 2) it.key
-                else null
-            }
-            val rightLeader = rightMap.maxBy { it.value }?.let {
-                if(it.value > (A.lastIndex - index) / 2) it.key
-                else null
-            }
+            val leader: Int?
+                get() {
+                    val max = numberMap.maxBy { it.value }
+                    val maxCount = max?.value ?: 0
+                    val maxNumber = max?.key
 
-            if(leftLeader != null && rightLeader != null && leftLeader == rightLeader) count++
+                    return if (maxCount >= totalCount / 2) maxNumber else null
+                }
+
+
+            override fun toString(): String {
+                return numberMap.toList().toString()
+            }
         }
 
-        return count
+        val leftGroup = NumberGroup()
+        val rightGroup = NumberGroup().apply { A.forEach { add(it) } }
+
+        var leaderCount = 0
+
+        for (index in 0 until A.lastIndex) {
+            val number = A[index]
+
+            leftGroup.add(number)
+            rightGroup.remove(number)
+
+            val leftLeader = leftGroup.leader
+            val rightLeader = rightGroup.leader
+
+            println("leftGroup = $leftGroup, rightGroup = $rightGroup")
+            println("leftLeader = $leftLeader, rightLeader = $rightLeader")
+
+            if (leftLeader != null && rightLeader != null && leftLeader == rightLeader) leaderCount++
+        }
+
+        return leaderCount
     }
 
     @Test
     fun test() {
-
-        Assert.assertEquals(3, solution(intArrayOf(4, 4, 2, 5, 3, 4, 4, 4)))
         Assert.assertEquals(0, solution(intArrayOf(1)))
         Assert.assertEquals(2, solution(intArrayOf(4, 3, 4, 4, 4, 2)))
     }
